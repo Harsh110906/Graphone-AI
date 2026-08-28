@@ -1,0 +1,309 @@
+{
+  "_meta": {
+    "description": "Canonical seed list of ~50 AI companies for entity resolution alias table",
+    "version": "1.0",
+    "rationale": "Selected to cover the major AI ecosystem segments: foundation model labs, AI infrastructure, applied AI, AI safety, and AI chip companies. These are the most frequently referenced entities across research papers, news, jobs, and startup directories."
+  },
+  "entities": [
+    {
+      "canonical_name": "OpenAI",
+      "aliases": ["Open AI", "OpenAI Inc", "OpenAI LP", "openai"],
+      "domain": "openai.com",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "Anthropic",
+      "aliases": ["Anthropic PBC", "anthropic"],
+      "domain": "anthropic.com",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "Google DeepMind",
+      "aliases": ["DeepMind", "Google Brain", "Google AI", "deepmind"],
+      "domain": "deepmind.google",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "Meta AI",
+      "aliases": ["Meta FAIR", "Facebook AI Research", "FAIR", "Meta Platforms AI"],
+      "domain": "ai.meta.com",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "Mistral AI",
+      "aliases": ["Mistral", "mistralai", "Mistral.ai"],
+      "domain": "mistral.ai",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "Cohere",
+      "aliases": ["Cohere AI", "cohere", "Cohere Inc"],
+      "domain": "cohere.com",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "xAI",
+      "aliases": ["X.AI", "x.ai", "xAI Corp"],
+      "domain": "x.ai",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "Stability AI",
+      "aliases": ["StabilityAI", "Stability.ai", "stability ai"],
+      "domain": "stability.ai",
+      "category": "Generative AI"
+    },
+    {
+      "canonical_name": "Midjourney",
+      "aliases": ["Mid Journey", "midjourney", "MidJourney Inc"],
+      "domain": "midjourney.com",
+      "category": "Generative AI"
+    },
+    {
+      "canonical_name": "Runway",
+      "aliases": ["Runway ML", "RunwayML", "runway"],
+      "domain": "runwayml.com",
+      "category": "Generative AI"
+    },
+    {
+      "canonical_name": "Hugging Face",
+      "aliases": ["HuggingFace", "huggingface", "HF", "Hugging Face Inc"],
+      "domain": "huggingface.co",
+      "category": "AI Infrastructure"
+    },
+    {
+      "canonical_name": "LangChain",
+      "aliases": ["Langchain", "langchain", "LangChain Inc"],
+      "domain": "langchain.com",
+      "category": "AI Infrastructure"
+    },
+    {
+      "canonical_name": "Pinecone",
+      "aliases": ["Pinecone.io", "pinecone", "Pinecone Systems"],
+      "domain": "pinecone.io",
+      "category": "AI Infrastructure"
+    },
+    {
+      "canonical_name": "Weights & Biases",
+      "aliases": ["W&B", "wandb", "Weights and Biases", "WandB"],
+      "domain": "wandb.ai",
+      "category": "AI Infrastructure"
+    },
+    {
+      "canonical_name": "Anyscale",
+      "aliases": ["anyscale", "Anyscale Inc"],
+      "domain": "anyscale.com",
+      "category": "AI Infrastructure"
+    },
+    {
+      "canonical_name": "Replicate",
+      "aliases": ["replicate", "Replicate Inc"],
+      "domain": "replicate.com",
+      "category": "AI Infrastructure"
+    },
+    {
+      "canonical_name": "Together AI",
+      "aliases": ["Together", "together.ai", "Together Computer"],
+      "domain": "together.ai",
+      "category": "AI Infrastructure"
+    },
+    {
+      "canonical_name": "Databricks",
+      "aliases": ["databricks", "Databricks Inc"],
+      "domain": "databricks.com",
+      "category": "Data & AI Platform"
+    },
+    {
+      "canonical_name": "Snowflake",
+      "aliases": ["snowflake", "Snowflake Inc", "Snowflake Computing"],
+      "domain": "snowflake.com",
+      "category": "Data & AI Platform"
+    },
+    {
+      "canonical_name": "Scale AI",
+      "aliases": ["ScaleAI", "Scale", "scale.ai"],
+      "domain": "scale.com",
+      "category": "AI Infrastructure"
+    },
+    {
+      "canonical_name": "Inflection AI",
+      "aliases": ["Inflection", "inflection.ai"],
+      "domain": "inflection.ai",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "Adept AI",
+      "aliases": ["Adept", "adept.ai"],
+      "domain": "adept.ai",
+      "category": "AI Agent"
+    },
+    {
+      "canonical_name": "Character.AI",
+      "aliases": ["Character AI", "CharacterAI", "character.ai"],
+      "domain": "character.ai",
+      "category": "Consumer AI"
+    },
+    {
+      "canonical_name": "Jasper",
+      "aliases": ["Jasper AI", "jasper.ai", "Jasper Inc"],
+      "domain": "jasper.ai",
+      "category": "Applied AI"
+    },
+    {
+      "canonical_name": "Copy.ai",
+      "aliases": ["CopyAI", "Copy AI", "copy.ai"],
+      "domain": "copy.ai",
+      "category": "Applied AI"
+    },
+    {
+      "canonical_name": "Notion AI",
+      "aliases": ["Notion", "notion.so"],
+      "domain": "notion.so",
+      "category": "AI-Enhanced Product"
+    },
+    {
+      "canonical_name": "Cursor",
+      "aliases": ["Cursor AI", "cursor.sh", "Anysphere"],
+      "domain": "cursor.sh",
+      "category": "AI Developer Tools"
+    },
+    {
+      "canonical_name": "Replit",
+      "aliases": ["replit", "Repl.it", "replit.com"],
+      "domain": "replit.com",
+      "category": "AI Developer Tools"
+    },
+    {
+      "canonical_name": "NVIDIA",
+      "aliases": ["Nvidia", "nvidia", "NVIDIA Corporation"],
+      "domain": "nvidia.com",
+      "category": "AI Chips"
+    },
+    {
+      "canonical_name": "AMD",
+      "aliases": ["Advanced Micro Devices", "amd"],
+      "domain": "amd.com",
+      "category": "AI Chips"
+    },
+    {
+      "canonical_name": "Intel",
+      "aliases": ["intel", "Intel Corporation", "Intel Corp"],
+      "domain": "intel.com",
+      "category": "AI Chips"
+    },
+    {
+      "canonical_name": "Cerebras Systems",
+      "aliases": ["Cerebras", "cerebras"],
+      "domain": "cerebras.net",
+      "category": "AI Chips"
+    },
+    {
+      "canonical_name": "Groq",
+      "aliases": ["groq", "Groq Inc"],
+      "domain": "groq.com",
+      "category": "AI Chips"
+    },
+    {
+      "canonical_name": "SambaNova Systems",
+      "aliases": ["SambaNova", "sambanova"],
+      "domain": "sambanova.ai",
+      "category": "AI Chips"
+    },
+    {
+      "canonical_name": "AI21 Labs",
+      "aliases": ["AI21", "ai21", "AI21 Studio"],
+      "domain": "ai21.com",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "Aleph Alpha",
+      "aliases": ["AlephAlpha", "aleph-alpha"],
+      "domain": "aleph-alpha.com",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "Perplexity AI",
+      "aliases": ["Perplexity", "perplexity.ai"],
+      "domain": "perplexity.ai",
+      "category": "AI Search"
+    },
+    {
+      "canonical_name": "You.com",
+      "aliases": ["You", "you.com", "YouChat"],
+      "domain": "you.com",
+      "category": "AI Search"
+    },
+    {
+      "canonical_name": "Glean",
+      "aliases": ["Glean AI", "glean.com"],
+      "domain": "glean.com",
+      "category": "Enterprise AI"
+    },
+    {
+      "canonical_name": "Writer",
+      "aliases": ["Writer AI", "writer.com"],
+      "domain": "writer.com",
+      "category": "Enterprise AI"
+    },
+    {
+      "canonical_name": "Typeface",
+      "aliases": ["Typeface AI", "typeface.ai"],
+      "domain": "typeface.ai",
+      "category": "Enterprise AI"
+    },
+    {
+      "canonical_name": "Covariant",
+      "aliases": ["Covariant AI", "covariant.ai"],
+      "domain": "covariant.ai",
+      "category": "Robotics AI"
+    },
+    {
+      "canonical_name": "Figure AI",
+      "aliases": ["Figure", "figure.ai"],
+      "domain": "figure.ai",
+      "category": "Robotics AI"
+    },
+    {
+      "canonical_name": "Shield AI",
+      "aliases": ["ShieldAI", "shield.ai"],
+      "domain": "shield.ai",
+      "category": "Defense AI"
+    },
+    {
+      "canonical_name": "Harvey AI",
+      "aliases": ["Harvey", "harvey.ai"],
+      "domain": "harvey.ai",
+      "category": "Legal AI"
+    },
+    {
+      "canonical_name": "Codeium",
+      "aliases": ["codeium", "Codeium Inc", "Windsurf"],
+      "domain": "codeium.com",
+      "category": "AI Developer Tools"
+    },
+    {
+      "canonical_name": "Tabnine",
+      "aliases": ["TabNine", "tabnine"],
+      "domain": "tabnine.com",
+      "category": "AI Developer Tools"
+    },
+    {
+      "canonical_name": "DeepSeek",
+      "aliases": ["Deep Seek", "deepseek", "DeepSeek AI"],
+      "domain": "deepseek.com",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "Zhipu AI",
+      "aliases": ["GLM", "ChatGLM", "zhipuai"],
+      "domain": "zhipuai.cn",
+      "category": "Foundation Model Lab"
+    },
+    {
+      "canonical_name": "01.AI",
+      "aliases": ["Yi", "01 AI", "zero-one-ai"],
+      "domain": "01.ai",
+      "category": "Foundation Model Lab"
+    }
+  ]
+}

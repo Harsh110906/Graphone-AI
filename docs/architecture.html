@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GraphOne AI Intelligence Search — System Architecture Specification</title>
+<style>
+  @page {
+    size: A4;
+    margin: 12mm 12mm 12mm 12mm;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #0f172a;
+    line-height: 1.45;
+    font-size: 9.5pt;
+    padding: 0;
+    margin: 0;
+  }
+  h1 { font-size: 15pt; color: #0f172a; border-bottom: 2px solid #3b82f6; padding-bottom: 4px; margin-top: 0; margin-bottom: 6px; }
+  h2 { font-size: 11.5pt; color: #1e3a8a; margin-top: 10px; margin-bottom: 4px; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px; }
+  h3 { font-size: 10pt; color: #334155; margin-top: 6px; margin-bottom: 3px; font-weight: 600; }
+  p { margin-top: 2px; margin-bottom: 5px; }
+  ul { margin-top: 2px; margin-bottom: 5px; padding-left: 18px; }
+  li { margin-bottom: 2px; }
+  code { font-family: "Consolas", "Courier New", monospace; background: #f1f5f9; padding: 1px 3px; border-radius: 3px; font-size: 8.5pt; color: #0f172a; }
+  pre { background: #0f172a; color: #f8fafc; padding: 6px 10px; border-radius: 4px; overflow-x: auto; font-size: 7.5pt; line-height: 1.25; margin-top: 4px; margin-bottom: 6px; }
+  pre code { background: transparent; color: inherit; padding: 0; font-size: 7.5pt; }
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 8px 0; }
+  strong { color: #0f172a; font-weight: 600; }
+  .meta-block { background: #f8fafc; border-left: 3px solid #3b82f6; padding: 4px 8px; margin-bottom: 8px; font-size: 8.5pt; }
+  .meta-block p { margin: 1px 0; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; margin-bottom: 6px; font-size: 8.5pt; }
+  th, td { border: 1px solid #cbd5e1; padding: 3px 6px; text-align: left; }
+  th { background-color: #f1f5f9; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<h1>GraphOne AI Intelligence Search — System Architecture Specification</h1>
+<div class="meta-block">
+  <p><strong>Document Version:</strong> 1.0 &nbsp;|&nbsp; <strong>Target Submission Artifact:</strong> <code>architecture.pdf</code> (&le;3 Pages) &nbsp;|&nbsp; <strong>Classification:</strong> Production Engineering Blueprint</p>
+  <p><strong>System Scope:</strong> High-Throughput Structured Multi-Entity Ingestion, Entity Resolution, Verification &amp; Freshness Intelligence</p>
+</div>
+
+<h2>1. Scale Strategy (500,000+ Records Architectural Scaling)</h2>
+<p>GraphOne scales from seed ingestion to <strong>500,000+ records</strong> without code refactoring through horizontal worker partitioning and stateless extraction:</p>
+<pre><code>                  ┌────────────────────────────────────────┐
+                  │          SCHEDULER &amp; DISCOVERY         │
+                  └───────────────────┬────────────────────┘
+                                      │
+                         [Redis Streams / Work Queue]
+                         (Topic: ingestion-crawl-jobs)
+                                      │
+          ┌───────────────────────────┼───────────────────────────┐
+          ▼                           ▼                           ▼
+  ┌───────────────┐           ┌───────────────┐           ┌───────────────┐
+  │ Worker Node 1 │           │ Worker Node 2 │           │ Worker Node N │
+  │  (Stateless)  │           │  (Stateless)  │           │  (Stateless)  │
+  └───────┬───────┘           └───────┬───────┘           └───────┬───────┘
+          │                           │                           │
+          └───────────────────────────┼───────────────────────────┘
+                                      ▼
+                        PostgreSQL (Neon) + pgvector
+                    (Atomic Claim: ON CONFLICT DO NOTHING)</code></pre>
+<ul>
+  <li><strong>Stateless Workers &amp; Queue Coordination:</strong> Crawlers run in autonomous worker pools driven by Redis Streams consumer groups.</li>
+  <li><strong>Atomic Claim &amp; Database Idempotency:</strong> Workers claim URLs atomically via PostgreSQL <code>ON CONFLICT DO NOTHING</code>. Uniqueness constraints on <code>canonical_url</code>, <code>arxiv_id</code>, and normalized entities prevent duplicate work across distributed workers.</li>
+  <li><strong>Object Storage Offloading:</strong> Raw HTML/XML payloads are stored in Cloudflare R2 object storage with sha256 content hashes, storing only URI pointers and metadata in PostgreSQL to prevent database bloat.</li>
+</ul>
+
+<h2>2. 413 &amp; 429 Resiliency Engine</h2>
+<p>Deterministic handling of LLM context limits (413) and rate limits (429):</p>
+<pre><code>RAW HTML ──► Boilerplate Stripping (Readability) ──► Token Estimation (tiktoken)
+                                                           │
+                                             ┌─────────────┴─────────────┐
+                                             ▼                           ▼
+                                    Tokens &lt;= 8,000             Tokens &gt; 8,000
+                                             │                           │
+                                      Direct LLM Call            Semantic Chunker
+                                             │                   (Preserve H1-H3,
+                                             │                    entities, dates)
+                                             │                           │
+                                             │                   Per-Chunk Extract
+                                             │                           │
+                                             │                   Deterministic Merge
+                                             │                           │
+                                             └─────────────┬─────────────┘
+                                                           ▼
+                                               Pydantic Schema Validation (extra="forbid")</code></pre>
+<ul>
+  <li><strong>Payload Too Large (413) Semantic Chunking:</strong> Content exceeding 8,192 tokens is stripped of boilerplate and segmented along paragraph/heading boundaries without splitting entities or numbers. Chunks are extracted individually and merged deterministically.</li>
+  <li><strong>Rate Limit (429) &amp; Multi-Tier Fallback Chain:</strong> Provider fallback priority: <code>Gemini 2.0 Flash</code> &rarr; <code>Groq Llama 3.3 70B</code> &rarr; <code>DeepSeek-V3</code>. Uses exponential backoff with full jitter and honors HTTP <code>Retry-After</code> headers.</li>
+  <li><strong>Dead-Letter Queue (DLQ):</strong> Requests failing 3 attempts are routed to <code>data_quality_flags</code> with <code>status: PENDING_REVIEW</code>.</li>
+</ul>
+
+<h2>3. Freshness &amp; Deduplication Across Distributed Nodes</h2>
+<pre><code>Incoming Record ──► 1. Exact Key Check (URL / arXiv ID / Domain) ──► Duplicate? ──► REJECT
+                            │ (No match)
+                            ▼
+                    2. Normalized Key Check (Unicode, Case, Legal) ──► Duplicate? ──► REJECT
+                            │ (No match)
+                            ▼
+                    3. Blocked Fuzzy Match (RapidFuzz Jaro-Winkler) ──► Sim &gt;= 0.90 ──► REJECT
+                            │ (No match)
+                            ▼
+                    4. 24-Hour Freshness Waterfall ───────────────► Stale / No Date? ──► REJECT
+                            │ (Passed)
+                            ▼
+                    REGISTER &amp; STORE FACT</code></pre>
+<ul>
+  <li><strong>Three-Tier Deduplication Pipeline:</strong>
+    1. <em>Tier 1 (Exact Key):</em> $O(1)$ lookup on canonical URL, arXiv ID, or official domain.<br>
+    2. <em>Tier 2 (Normalized Key):</em> NFKD unicode normalization, lowercasing, punctuation stripping, and legal suffix removal (<code>Inc.</code>, <code>Ltd.</code>, <code>PBC</code>, <code>LLC</code>).<br>
+    3. <em>Tier 3 (Blocked Fuzzy Match):</em> Blocks records by prefix and entity type (<code>STARTUP:op</code>, <code>JOB:en</code>) and runs RapidFuzz Jaro-Winkler ($\ge 0.90$) strictly within blocks to prevent $O(n^2)$ degradation.
+  </li>
+  <li><strong>24-Hour Freshness Waterfall:</strong> Date extraction follows: $\text{JSON-LD} \rightarrow \text{OpenGraph/Meta} \rightarrow \langle\text{time datetime}\rangle \rightarrow \text{Relative Text} \rightarrow \text{RSS Timestamp}$. If no timestamp within 24h is verified, the record is rejected.</li>
+</ul>
+
+<h2>4. Storage &amp; Database Architecture Justification</h2>
+<pre><code>┌─────────────────────────────────────────────────────────────────────────────┐
+│                       POSTGRESQL 16 (NEON SERVERLESS)                       │
+├───────────────────────────────┬─────────────────────────────┬───────────────┤
+│       RELATIONAL TABLES       │     PGVECTOR EXTENSION      │     GRAPH     │
+│   (Startups, Jobs, Papers,    │     (1536-dim embeddings,   │ (Relationships│
+│     Lineage, Data Quality)    │       HNSW cosine index)    │   &amp; Aliases)  │
+└───────────────────────────────┴─────────────────────────────┴───────────────┘</code></pre>
+<ul>
+  <li><strong>Unified PostgreSQL with pgvector:</strong> Eliminates dual-write lag between separate vector/graph DBs. Provides ACID atomicity across relational metadata, vector embeddings, and entity relationships in a single database engine.</li>
+  <li><strong>Hybrid Lexical + Semantic Search:</strong> Combines full-text search (<code>tsvector</code> + GIN) with vector search (<code>pgvector</code> cosine distance) via Reciprocal Rank Fusion (RRF).</li>
+  <li><strong>Auditable Data Lineage:</strong> Every fact is linked via foreign keys to immutable <code>raw_documents</code> and <code>lineage_events</code>.</li>
+</ul>
+
+<h2>5. Data Quality Scoring &amp; Corroboration Framework</h2>
+<p>Every stored record is assigned a composite Data Quality Score (0–100):</p>
+<p>$$\text{DQS} = 0.30 \cdot S_{\text{reliability}} + 0.25 \cdot S_{\text{corroboration}} + 0.25 \cdot S_{\text{freshness}} + 0.20 \cdot S_{\text{confidence}} - P_{\text{dispute}}$$</p>
+<table>
+  <tr>
+    <th>Scoring Component</th>
+    <th>Weight</th>
+    <th>Scoring Tiers &amp; Criteria</th>
+  </tr>
+  <tr>
+    <td><strong>Source Reliability</strong></td>
+    <td>30%</td>
+    <td>100 (Official APIs/arXiv/Greenhouse), 92 (Primary RSS/TechCrunch), 85 (Curated GitHub Directories), 70 (General Web)</td>
+  </tr>
+  <tr>
+    <td><strong>Corroboration</strong></td>
+    <td>25%</td>
+    <td>100 (Cross-verified across &ge;2 independent sources), 80 (Authoritative primary registry single-source), 70 (Curated directory single-source), 50 (Unverified / missing fields)</td>
+  </tr>
+  <tr>
+    <td><strong>Freshness</strong></td>
+    <td>25%</td>
+    <td>100 (&le;24 hours), 85 (&le;7 days), 70 (&le;30 days), 50 (&gt;30 days / unknown)</td>
+  </tr>
+  <tr>
+    <td><strong>Extraction Confidence</strong></td>
+    <td>20%</td>
+    <td>100 (Structured API/Exact Regex), 90 (JSON-LD / Meta Tags), 80 (HTML CSS Selector), 70 (Fuzzy / LLM)</td>
+  </tr>
+  <tr>
+    <td><strong>Dispute Penalty</strong></td>
+    <td>Deduction</td>
+    <td>-25 points penalty if independent sources report conflicting values (status=DISPUTED, both values retained with citations)</td>
+  </tr>
+</table>
+
+</body>
+</html>

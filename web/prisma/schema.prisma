@@ -1,0 +1,532 @@
+// GraphOne AI Intelligence Search — Complete Data Model
+// All 20+ tables as specified in the assessment brief (Section 10).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════════════════
+// User & Auth (Clerk-managed, with local usage tracking)
+// ═══════════════════════════════════════════════════════════
+
+model User {
+  id            String   @id @default(cuid())
+  clerkId       String   @unique
+  email         String   @unique
+  displayName   String?
+  tier          UserTier @default(FREE)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  usage         UserUsage?
+  searches      Search[]
+  savedSearches SavedSearch[]
+  collections   Collection[]
+  alerts        Alert[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+enum UserTier {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+model UserUsage {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  dailySearches   Int      @default(0)
+  totalSearches   Int      @default(0)
+  lastSearchAt    DateTime?
+  lastResetAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_usage")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Search & Collections
+// ═══════════════════════════════════════════════════════════
+
+model Search {
+  id          String   @id @default(cuid())
+  userId      String?
+  query       String
+  filters     Json?
+  resultCount Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("searches")
+}
+
+model SavedSearch {
+  id        String   @id @default(cuid())
+  userId    String
+  query     String
+  filters   Json?
+  name      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("saved_searches")
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  isPublic    Boolean  @default(false)
+  slug        String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CollectionItem[]
+
+  @@map("collections")
+}
+
+model CollectionItem {
+  id           String @id @default(cuid())
+  collectionId String
+  entityType   String
+  entityId     String
+  notes        String?
+  addedAt      DateTime @default(now())
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, entityType, entityId])
+  @@map("collection_items")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Ingestion Sources & Raw Documents
+// ═══════════════════════════════════════════════════════════
+
+model Source {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  baseUrl     String
+  type        SourceType
+  isActive    Boolean    @default(true)
+  config      Json?
+  createdAt   DateTime   @default(now())
+
+  crawlRuns    CrawlRun[]
+  rawDocuments RawDocument[]
+
+  @@map("sources")
+}
+
+enum SourceType {
+  API
+  RSS
+  SCRAPER
+  BROWSER
+}
+
+model CrawlRun {
+  id             String    @id @default(cuid())
+  sourceId       String
+  status         String    @default("RUNNING")
+  recordsFound   Int       @default(0)
+  recordsStored  Int       @default(0)
+  errorCount     Int       @default(0)
+  startedAt      DateTime  @default(now())
+  completedAt    DateTime?
+  metadata       Json?
+
+  source       Source        @relation(fields: [sourceId], references: [id])
+  rawDocuments RawDocument[]
+
+  @@index([sourceId, startedAt])
+  @@map("crawl_runs")
+}
+
+model RawDocument {
+  id           String   @id @default(cuid())
+  sourceId     String
+  crawlRunId   String?
+  url          String
+  contentHash  String
+  contentType  String
+  rawContent   String?
+  r2Key        String?
+  httpStatus   Int
+  headers      Json?
+  fetchedAt    DateTime @default(now())
+
+  source      Source           @relation(fields: [sourceId], references: [id])
+  crawlRun    CrawlRun?        @relation(fields: [crawlRunId], references: [id])
+  versions    DocumentVersion[]
+  lineage     LineageEvent[]
+
+  @@unique([url, contentHash])
+  @@index([sourceId, fetchedAt])
+  @@map("raw_documents")
+}
+
+model DocumentVersion {
+  id            String   @id @default(cuid())
+  rawDocumentId String
+  version       Int
+  contentHash   String
+  changedAt     DateTime @default(now())
+
+  rawDocument RawDocument @relation(fields: [rawDocumentId], references: [id])
+
+  @@unique([rawDocumentId, version])
+  @@map("document_versions")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Core Entity Tables
+// ═══════════════════════════════════════════════════════════
+
+model Startup {
+  id              String    @id @default(cuid())
+  normalizedName  String
+  officialDomain  String?
+  entityName      String
+  employeeCount   Int?
+  sourceUrl       String
+  sourceName      String
+  schemaVersion   String    @default("1.0")
+  collectedAt     DateTime
+  qualityScore    Float     @default(0)
+  status          RecordStatus @default(ACTIVE)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  products     Product[]
+  jobs         Job[]
+  newsArticles NewsArticleMention[]
+  entity       Entity?    @relation(fields: [entityId], references: [id])
+  entityId     String?
+
+  @@unique([normalizedName, officialDomain])
+  @@index([entityName])
+  @@map("startups")
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  startupId     String?
+  startupName   String
+  pricingModel  PricingModel?
+  sourceUrl     String
+  sourceName    String
+  schemaVersion String        @default("1.0")
+  collectedAt   DateTime
+  qualityScore  Float         @default(0)
+  status        RecordStatus  @default(ACTIVE)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  startup Startup? @relation(fields: [startupId], references: [id])
+
+  @@index([startupName])
+  @@map("products")
+}
+
+enum PricingModel {
+  FREE
+  FREEMIUM
+  PAID
+  ENTERPRISE
+}
+
+model ResearchPaper {
+  id            String   @id @default(cuid())
+  arxivId       String?  @unique
+  title         String
+  authors       Json
+  paperUrl      String
+  githubUrl     String?
+  githubStars   Int?
+  publishedDate DateTime
+  schemaVersion String   @default("1.0")
+  collectedAt   DateTime
+  qualityScore  Float    @default(0)
+  status        RecordStatus @default(ACTIVE)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  githubRepo GithubRepository? @relation(fields: [githubRepoId], references: [id])
+  githubRepoId String?
+
+  @@index([title])
+  @@map("research_papers")
+}
+
+model GithubRepository {
+  id           String   @id @default(cuid())
+  fullName     String   @unique
+  owner        String
+  repoName     String
+  stars        Int      @default(0)
+  lastFetched  DateTime @default(now())
+  description  String?
+  language     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  papers ResearchPaper[]
+
+  @@map("github_repositories")
+}
+
+model Job {
+  id            String       @id @default(cuid())
+  canonicalUrl  String       @unique
+  company       String
+  title         String?
+  date          DateTime
+  isRemote      Boolean      @default(false)
+  location      String?
+  roleFamily    String
+  sourceUrl     String
+  sourceName    String
+  schemaVersion String       @default("1.0")
+  collectedAt   DateTime
+  qualityScore  Float        @default(0)
+  status        RecordStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  startup   Startup? @relation(fields: [startupId], references: [id])
+  startupId String?
+
+  @@index([company, date])
+  @@map("jobs")
+}
+
+model NewsArticle {
+  id             String       @id @default(cuid())
+  canonicalUrl   String       @unique
+  title          String
+  fullText       String
+  publishedAt    DateTime
+  sourceName     String
+  sourceUrl      String
+  schemaVersion  String       @default("1.0")
+  collectedAt    DateTime
+  qualityScore   Float        @default(0)
+  status         RecordStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  mentionedEntities NewsArticleMention[]
+
+  @@index([publishedAt])
+  @@map("news_articles")
+}
+
+model NewsArticleMention {
+  id        String @id @default(cuid())
+  articleId String
+  startupId String?
+  entityName String
+
+  article NewsArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  startup Startup?    @relation(fields: [startupId], references: [id])
+
+  @@unique([articleId, entityName])
+  @@map("news_article_mentions")
+}
+
+enum RecordStatus {
+  ACTIVE
+  PENDING_REVIEW
+  REJECTED
+  ARCHIVED
+}
+
+// ═══════════════════════════════════════════════════════════
+// Entity Resolution & Graph
+// ═══════════════════════════════════════════════════════════
+
+model Entity {
+  id             String   @id @default(cuid())
+  canonicalName  String   @unique
+  type           String
+  domain         String?
+  description    String?
+  category       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  aliases       EntityAlias[]
+  relationships EntityRelationship[] @relation("fromEntity")
+  relatedTo     EntityRelationship[] @relation("toEntity")
+  startups      Startup[]
+
+  @@map("entities")
+}
+
+model EntityAlias {
+  id       String @id @default(cuid())
+  entityId String
+  alias    String
+  source   String?
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([entityId, alias])
+  @@index([alias])
+  @@map("entity_aliases")
+}
+
+model EntityRelationship {
+  id             String @id @default(cuid())
+  fromEntityId   String
+  toEntityId     String
+  relationshipType String
+  confidence     Float  @default(1.0)
+  sourceUrl      String?
+  createdAt      DateTime @default(now())
+
+  fromEntity Entity @relation("fromEntity", fields: [fromEntityId], references: [id])
+  toEntity   Entity @relation("toEntity", fields: [toEntityId], references: [id])
+
+  @@unique([fromEntityId, toEntityId, relationshipType])
+  @@map("entity_relationships")
+}
+
+model EntityMappingLog {
+  id            String   @id @default(cuid())
+  rawName       String
+  canonicalName String?
+  method        String
+  confidence    Float
+  sourceUrl     String
+  decision      String
+  createdAt     DateTime @default(now())
+
+  @@index([rawName])
+  @@index([decision])
+  @@map("entity_mapping_log")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Search Embeddings (pgvector)
+// ═══════════════════════════════════════════════════════════
+
+model SearchEmbedding {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  embedding  Unsupported("vector(1536)")
+  text       String
+  model      String   @default("text-embedding-3-small")
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@map("search_embeddings")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Alerts & Notifications
+// ═══════════════════════════════════════════════════════════
+
+model Alert {
+  id         String         @id @default(cuid())
+  userId     String
+  query      String
+  filters    Json?
+  frequency  AlertFrequency @default(DAILY)
+  isActive   Boolean        @default(true)
+  lastFired  DateTime?
+  createdAt  DateTime       @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+
+  @@map("alerts")
+}
+
+enum AlertFrequency {
+  INSTANT
+  DAILY
+  WEEKLY
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  alertId   String?
+  type      String
+  title     String
+  body      String?
+  isRead    Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alert Alert? @relation(fields: [alertId], references: [id])
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ═══════════════════════════════════════════════════════════
+// Data Quality & Lineage
+// ═══════════════════════════════════════════════════════════
+
+model DataQualityFlag {
+  id            String        @id @default(cuid())
+  recordType    String
+  recordId      String
+  flagType      String
+  fieldName     String
+  expectedValue String?
+  actualValue   String?
+  sourceUrl     String?
+  status        QualityStatus @default(OPEN)
+  qualityScore  Float         @default(0)
+  createdAt     DateTime      @default(now())
+  resolvedAt    DateTime?
+
+  @@index([recordType, recordId])
+  @@index([status])
+  @@map("data_quality_flags")
+}
+
+enum QualityStatus {
+  OPEN
+  VERIFIED
+  DISPUTED
+  RESOLVED
+  PENDING_REVIEW
+}
+
+model LineageEvent {
+  id                       String   @id @default(cuid())
+  rawDocumentId            String
+  extractionRunId          String
+  extractionMethod         String
+  llmModelUsed             String?
+  validationResult         String
+  entityResolutionDecision String?
+  recordVersion            Int      @default(1)
+  createdAt                DateTime @default(now())
+
+  rawDocument RawDocument @relation(fields: [rawDocumentId], references: [id])
+
+  @@index([rawDocumentId])
+  @@map("lineage_events")
+}
